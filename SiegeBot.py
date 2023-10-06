@@ -14,23 +14,24 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 rows = [] #for initialization
-maps = [] #for updating
-people = [] #strats
-KD = [] #Kafe
-CO = [] #Coastline
-OR = [] #Oregon
-CH = [] #Chalet
+maps = [] #for maps
+plans = [] #plans
 
 description = '''description'''
 
 class Person:
-    def __init__(self, name, map, score, attempts, description, link):
+    def __init__(self, name, m, score, attempts, description, link):
         self.name = name
-        self.map = map
+        self.m = m
         self.score = 0
         self.attempts = attempts
         self.description = description
         self.link = link
+        #tostring method  def __str__(self):
+    def __str__(self):
+        return self.m + ',' + self.name + ',' + str(self.score) + ',' + str(self.attempts) + ',' + self.description + ',' + self.link
+    def plist(self):
+        return [self.m,self.name,str(self.score),str(self.attempts),self.description,self.link]
 
 bot = commands.Bot(command_prefix='!', description=description, intents=intents)
 @bot.event
@@ -46,39 +47,47 @@ async def on_ready():
         for row in csvreader:
             if csvreader[r][0] == []: break
             name = csvreader[r][1]
-            map = csvreader[r][0]
+            m = csvreader[r][0]
             score = int(csvreader[r][2])
             attempts = int(csvreader[r][3])
             description = csvreader[r][4]
             link = csvreader[r][5]
-            people.append(Person(name = name, map=map, score = score, attempts=attempts, description=description, link=link))
-            #print(f'{people[name].name} has {people[name].score} points')
-            #update.append([people[name].name,people[name].score])
-            people.sort(key=lambda x: x.map, reverse=False)
-            if maps.count(map)==0: maps.append(map)
-            if map=="Kafe Dostoyevsky": KD.append(name)
-            if map=="Coastline": CO.append(name)
-            if map=="Oregon": OR.append(name)
-            if map=="Chalet": CH.append(name)
+            plans.append(Person(name = name, m=m, score = score, attempts=attempts, description=description, link=link))
+            plans.sort(key=lambda x: x.m, reverse=False)
+            if maps.count(m)==0: maps.append(m)
             r = r+1
+        
 
-       
 @bot.command()
-async def members(ctx):
-    '''Server Members.'''
-    x = ctx.guild.members
-    for member in x:
-        await ctx.send(f'{member.name} is also called {member.nick}')
+async def plus1(ctx, name):
+    '''updates the strat with a success'''
+    error = 1
+    i=0
+    for x in plans:
+        if plans[i].name == name: 
+            plans[i].score+=1
+            plans[i].attempts+=1
+            await ctx.send(f'PLUS ONE FOR THE STRAT! {name} was successful! Attempts and success rate have been updated. {name} has been attempted {plans[i].attempts} and was successful {plans[i].score} times')
+            error = 0
+        i+=1
+    if error == 1: 
+            await ctx.send(f'{name} is not a strat. Please use the plans full name in quotes if there are spaces')
+            return
+    with open("Strat.csv","w", newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',')
+        update = list(plans)
+        stringplans = [x.plist() for x in plans]
+        print(stringplans)
+        csvwriter.writerows(stringplans)
 
 @bot.command()
 async def strats(ctx):
-    #contents = ["Kafe Dostoyevsky", "Coastline", "Oregon", "Chalet"]
     contents = maps
-    pages = len(people)
+    pages = len(plans)
     cur_page = 1
-    if people[cur_page-1].attempts == 0: percentage = 0
-    else: percentage = people[cur_page-1].score/people[cur_page-1].attempts*100
-    message = await ctx.send(f"Page {cur_page}/{pages}: {people[cur_page-1].map}\n\nName :{people[cur_page-1].name}\n\nStrat Wins: {people[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {people[cur_page-1].description}\n\nLink: {people[cur_page-1].link}")
+    if plans[cur_page-1].attempts == 0: percentage = 0
+    else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
+    message = await ctx.send(f"Page {cur_page}/{pages}: {plans[cur_page-1].map}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
     # getting the message object for editing and reacting
 
     await message.add_reaction("◀️")
@@ -90,20 +99,20 @@ async def strats(ctx):
 
     while True:
             reaction, user = await bot.wait_for("reaction_add", timeout=6000, check=check)
-            # waiting for a reaction to be added - times out after x seconds, 60 in this
+            # waiting for a reaction to be added - times out after x seconds, 6000 in this
 
             if str(reaction.emoji) == "▶️" and cur_page != pages:
                 cur_page += 1
-                if people[cur_page-1].attempts == 0: percentage = 0
-                else: percentage = people[cur_page-1].score/people[cur_page-1].attempts*100
-                await message.edit(content=f"Page {cur_page}/{pages}: {people[cur_page-1].map}\n\nName :{people[cur_page-1].name}\n\nStrat Wins: {people[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {people[cur_page-1].description}\n\nLink: {people[cur_page-1].link}")
+                if plans[cur_page-1].attempts == 0: percentage = 0
+                else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
+                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].map}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
                 await message.remove_reaction(reaction, user)
 
             elif str(reaction.emoji) == "◀️" and cur_page > 1:
                 cur_page -= 1
-                if people[cur_page-1].attempts == 0: percentage = 0
-                else: percentage = people[cur_page-1].score/people[cur_page-1].attempts*100
-                await message.edit(content=f"Page {cur_page}/{pages}: {people[cur_page-1].map}\n\nName :{people[cur_page-1].name}\n\nStrat Wins: {people[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {people[cur_page-1].description}\n\nLink: {people[cur_page-1].link}")
+                if plans[cur_page-1].attempts == 0: percentage = 0
+                else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
+                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].map}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
                 await message.remove_reaction(reaction, user)
 
             else:
