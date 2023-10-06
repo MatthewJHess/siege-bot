@@ -79,6 +79,28 @@ async def plus1(ctx, name):
         stringplans = [x.plist() for x in plans]
         print(stringplans)
         csvwriter.writerows(stringplans)
+        
+@bot.command()
+async def failure(ctx, name):
+    '''updates the strat with a success'''
+    error = 1
+    i=0
+    for x in plans:
+        if plans[i].name == name: 
+            plans[i].attempts+=1
+            await ctx.send(f'FAILURE :( {name} wasn\'t successful! Attempts and success rate have been updated. {name} has been attempted {plans[i].attempts} and has failed {plans[i].attempts - plans[i].score} times')
+            error = 0
+        i+=1
+    if error == 1: 
+            await ctx.send(f'{name} is not a strat. Please use the plans full name in quotes if there are spaces')
+            return
+    with open("Strat.csv","w", newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',')
+        update = list(plans)
+        stringplans = [x.plist() for x in plans]
+        print(stringplans)
+        csvwriter.writerows(stringplans)
+
 
 @bot.command()
 async def strats(ctx):
@@ -87,14 +109,16 @@ async def strats(ctx):
     cur_page = 1
     if plans[cur_page-1].attempts == 0: percentage = 0
     else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
-    message = await ctx.send(f"Page {cur_page}/{pages}: {plans[cur_page-1].map}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
+    message = await ctx.send(f"Page {cur_page}/{pages}: {plans[cur_page-1].m}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
     # getting the message object for editing and reacting
 
     await message.add_reaction("◀️")
     await message.add_reaction("▶️")
+    await message.add_reaction("✅")
+    await message.add_reaction("❌")
 
     def check(reaction, user):
-        return str(reaction.emoji) in ["◀️", "▶️"]
+        return str(reaction.emoji) in ["◀️", "▶️", "✅", "❌"]
         
 
     while True:
@@ -105,22 +129,35 @@ async def strats(ctx):
                 cur_page += 1
                 if plans[cur_page-1].attempts == 0: percentage = 0
                 else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
-                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].map}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
+                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].m}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
                 await message.remove_reaction(reaction, user)
 
             elif str(reaction.emoji) == "◀️" and cur_page > 1:
                 cur_page -= 1
                 if plans[cur_page-1].attempts == 0: percentage = 0
                 else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
-                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].map}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
+                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].m}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
+                await message.remove_reaction(reaction, user)
+                
+            elif str(reaction.emoji) == "✅":
+                await plus1(ctx, plans[cur_page-1].name)
+                if plans[cur_page-1].attempts == 0: percentage = 0
+                else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
+                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].m}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
+                await message.remove_reaction(reaction, user)
+                
+            elif str(reaction.emoji) == "❌":
+                await failure(ctx, plans[cur_page-1].name)
+                if plans[cur_page-1].attempts == 0: percentage = 0
+                else: percentage = plans[cur_page-1].score/plans[cur_page-1].attempts*100
+                await message.edit(content=f"Page {cur_page}/{pages}: {plans[cur_page-1].m}\n\nName :{plans[cur_page-1].name}\n\nStrat Wins: {plans[cur_page-1].score} Winrate: {percentage}%\n\nDescription: {plans[cur_page-1].description}\n\nLink: {plans[cur_page-1].link}")
                 await message.remove_reaction(reaction, user)
 
             else:
                 await message.remove_reaction(reaction, user)
+                await ctx.send(f'ERROR!')
                 # removes reactions if the user tries to go forward on the last page or
                 # backwards on the first page
         
     
 bot.run(TOKEN)
-
-
